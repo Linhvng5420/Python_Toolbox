@@ -2,8 +2,10 @@ import os
 import json
 from datetime import datetime
 from natsort import natsorted
+from tkinterdnd2 import TkinterDnD, DND_FILES
 import tkinter as tk
 from tkinter import filedialog, messagebox
+import re
 
 # Hàm đổi tên
 def rename_files():
@@ -15,8 +17,8 @@ def rename_files():
     rename_log = {}
     now = datetime.now().strftime("%d%m%Y-%H%M")
     files = os.listdir(folder_path)
-    files = [f for f in files if os.path.isfile(os.path.join(folder_path, f))]  # Lọc tệp
-    files = natsorted(files)  # Sắp xếp theo thứ tự tự nhiên
+    files = [f for f in files if os.path.isfile(os.path.join(folder_path, f))]
+    files = natsorted(files)
 
     used_names = set()
     for index, file_name in enumerate(files, start=1):
@@ -32,12 +34,13 @@ def rename_files():
 
         used_names.add(new_name)
         new_path = os.path.join(folder_path, new_name)
-        rename_log[new_name] = file_name  # Lưu để hoàn tác
+        rename_log[new_name] = file_name
         os.rename(file_path, new_path)
 
     log_path = os.path.join(folder_path, "rename_log.json")
     with open(log_path, "w") as log_file:
         json.dump(rename_log, log_file, indent=4)
+    messagebox.showinfo("Thành công", "Đổi tên tệp thành công.")
 
 # Hàm khôi phục tên
 def undo_rename():
@@ -61,6 +64,7 @@ def undo_rename():
             os.rename(new_path, original_path)
 
     os.remove(log_path)
+    messagebox.showinfo("Thành công", "Khôi phục tên tệp thành công.")
 
 # Hàm xóa file log
 def delete_log():
@@ -68,11 +72,11 @@ def delete_log():
     log_path = os.path.join(folder_path, "rename_log.json")
     if os.path.exists(log_path):
         os.remove(log_path)
+        messagebox.showinfo("Thành công", "Đã xóa file log.")
     else:
         messagebox.showwarning("Thông báo", "Không tìm thấy file log để xóa.")
 
 # Hàm dán đường dẫn từ clipboard
-import re
 def paste_path():
     folder_path = app.clipboard_get().strip()  # Lấy đường dẫn từ clipboard
     folder_path = re.sub(r'[\"\'“”]', '', folder_path)  # Loại bỏ dấu nháy đôi hoặc đặc biệt
@@ -82,15 +86,27 @@ def paste_path():
     folder_path_entry.delete(0, tk.END)
     folder_path_entry.insert(0, folder_path)
 
+# Hàm xử lý kéo thả
+def drop_event(event):
+    folder_path = event.data.strip()
+    folder_path = folder_path.replace("{", "").replace("}", "")  # Loại bỏ ký tự { và }
+    if os.path.isfile(folder_path):  # Nếu là tệp
+        folder_path = os.path.dirname(folder_path)  # Lấy thư mục chứa tệp
+    folder_path_entry.delete(0, tk.END)
+    folder_path_entry.insert(0, folder_path)
 
 # Tạo giao diện Tkinter
-app = tk.Tk()
+app = TkinterDnD.Tk()
 app.title("Batch File Renamer")
 
 # Nhập đường dẫn thư mục
 tk.Label(app, text="Đường dẫn thư mục:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
 folder_path_entry = tk.Entry(app, width=50)
 folder_path_entry.grid(row=0, column=1, padx=5, pady=5)
+
+# Kích hoạt kéo thả
+folder_path_entry.drop_target_register(DND_FILES)
+folder_path_entry.dnd_bind("<<Drop>>", drop_event)
 
 # Nút chọn thư mục
 def browse_folder():
@@ -107,15 +123,15 @@ paste_button = tk.Button(app, text="Dán", command=paste_path)
 paste_button.grid(row=0, column=3, padx=5, pady=5)
 
 # Nút đổi tên
-rename_button = tk.Button(app, text="ReName", command=rename_files, bg="lightblue")
+rename_button = tk.Button(app, text="Rename", command=rename_files, bg="lightgreen", font=("Helvetica", 10, "bold"))
 rename_button.grid(row=1, column=1, pady=5)
 
 # Nút khôi phục tên
-undo_button = tk.Button(app, text="UndoRename", command=undo_rename, bg="lightgreen")
+undo_button = tk.Button(app, text="UndoRename", command=undo_rename, bg="lightblue", font=("Helvetica", 10, "bold"))
 undo_button.grid(row=2, column=1, pady=5)
 
 # Nút xóa file log
-delete_log_button = tk.Button(app, text="DeLog", command=delete_log, bg="lightcoral")
+delete_log_button = tk.Button(app, text="DeLog", command=delete_log, bg="red", fg="white", font=("Helvetica", 10, "bold"))
 delete_log_button.grid(row=3, column=1, pady=5)
 
 # Chạy ứng dụng
