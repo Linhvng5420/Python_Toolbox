@@ -72,10 +72,16 @@ def delete_log():
         messagebox.showwarning("Thông báo", "Không tìm thấy file log để xóa.")
 
 # Hàm dán đường dẫn từ clipboard
+import re
 def paste_path():
-    folder_path = app.clipboard_get()
+    folder_path = app.clipboard_get().strip()  # Lấy đường dẫn từ clipboard
+    folder_path = re.sub(r'[\"\'“”]', '', folder_path)  # Loại bỏ dấu nháy đôi hoặc đặc biệt
+
+    if os.path.isfile(folder_path):  # Nếu là đường dẫn tệp
+        folder_path = os.path.dirname(folder_path)  # Lấy đường dẫn thư mục
     folder_path_entry.delete(0, tk.END)
     folder_path_entry.insert(0, folder_path)
+
 
 # Tạo giao diện Tkinter
 app = tk.Tk()
