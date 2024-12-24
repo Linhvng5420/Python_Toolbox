@@ -15,7 +15,11 @@ def rename_files():
         return
 
     rename_log = {}
-    now = datetime.now().strftime("%d%m%Y-%H%M")
+    new_name_base = new_name_entry.get().strip()
+    if not new_name_base:
+        messagebox.showerror("Lỗi", "Tên mới không được để trống.")
+        return
+
     files = os.listdir(folder_path)
     files = [f for f in files if os.path.isfile(os.path.join(folder_path, f))]
     files = natsorted(files)
@@ -24,7 +28,7 @@ def rename_files():
     for index, file_name in enumerate(files, start=1):
         file_path = os.path.join(folder_path, file_name)
         file_ext = os.path.splitext(file_name)[1]
-        base_name = f"{now}-{index:02d}"
+        base_name = f"{new_name_base}-{index:02d}"
         new_name = f"{base_name}{file_ext}"
 
         counter = 1
@@ -40,7 +44,8 @@ def rename_files():
     log_path = os.path.join(folder_path, "rename_log.json")
     with open(log_path, "w") as log_file:
         json.dump(rename_log, log_file, indent=4)
-    messagebox.showinfo("Thành công", "Đổi tên tệp thành công.")
+
+    messagebox.showinfo("Thành công", "Đã đổi tên tệp thành công.")
 
 # Hàm khôi phục tên
 def undo_rename():
@@ -122,17 +127,22 @@ browse_button.grid(row=0, column=2, padx=5, pady=5)
 paste_button = tk.Button(app, text="Dán", command=paste_path)
 paste_button.grid(row=0, column=3, padx=5, pady=5)
 
+# Nhập tên mới
+tk.Label(app, text="Tên mới:").grid(row=1, column=0, padx=5, pady=5, sticky="w")
+new_name_entry = tk.Entry(app, width=50)
+new_name_entry.grid(row=1, column=1, padx=5, pady=5)
+
 # Nút đổi tên
 rename_button = tk.Button(app, text="Rename", command=rename_files, bg="lightgreen", font=("Helvetica", 10, "bold"))
-rename_button.grid(row=1, column=1, pady=5)
+rename_button.grid(row=2, column=1, pady=5)
 
 # Nút khôi phục tên
 undo_button = tk.Button(app, text="UndoRename", command=undo_rename, bg="lightblue", font=("Helvetica", 10, "bold"))
-undo_button.grid(row=2, column=1, pady=5)
+undo_button.grid(row=3, column=1, pady=5)
 
 # Nút xóa file log
 delete_log_button = tk.Button(app, text="DeLog", command=delete_log, bg="red", fg="white", font=("Helvetica", 10, "bold"))
-delete_log_button.grid(row=3, column=1, pady=5)
+delete_log_button.grid(row=4, column=1, pady=5)
 
 # Chạy ứng dụng
 app.mainloop()
