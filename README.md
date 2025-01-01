@@ -7,7 +7,7 @@
 
   
 ### Hình ảnh 1
-<img src="ScreenShot/Rename_AFIF 1.png">
+<img src="ScreenShot/Rename_AFIF 1.png" alt="Example 1" width="500">
 
 ### Hình ảnh 2
-<img src="ScreenShot/Rename_AFIF 2.png">
+<img src="ScreenShot/Rename_AFIF 2.png" alt="Example 1" width="500">
