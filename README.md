@@ -1,6 +1,13 @@
 # Rename_AFIF
-## Hình ảnh 1
-![Example 1](ScreenShot/Rename_AFIF 1.png)
+### Tutorial
+* **Ctrl + C file or folder > Click Button Paste > App auto paste link of folder.**
+* **Use Button Brownse.**
+* **Drag and Drop file or folder.**
+* **P/S: App only rename all file in folder**
 
-## Hình ảnh 2
-![Example 2](ScreenShot/Rename_AFIF 2.png)
+  
+### Hình ảnh 1
+<img src="ScreenShot/Rename_AFIF 1.png">
+
+### Hình ảnh 2
+<img src="ScreenShot/Rename_AFIF 2.png">
