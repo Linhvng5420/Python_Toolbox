@@ -51,7 +51,7 @@ def rename_files():
         rename_log[new_name] = file_name
         os.rename(file_path, new_path)
 
-    log_path = os.path.join(folder_path, "rename_log.json")
+    log_path = os.path.join(os.path.dirname(__file__), "rename_log.json")
     with open(log_path, "w") as log_file:
         json.dump(rename_log, log_file, indent=4)
 
@@ -64,7 +64,7 @@ def undo_rename():
         display_message("Invalid directory path.", "red")
         return
 
-    log_path = os.path.join(folder_path, "rename_log.json")
+    log_path = os.path.join(os.path.dirname(__file__), "rename_log.json")
     if not os.path.exists(log_path):
         display_message("Log file not found.", "red")
         return
@@ -83,8 +83,7 @@ def undo_rename():
 
 # Hàm xóa file log
 def delete_log():
-    folder_path = folder_path_entry.get()
-    log_path = os.path.join(folder_path, "rename_log.json")
+    log_path = os.path.join(os.path.dirname(__file__), "rename_log.json")
     if os.path.exists(log_path):
         os.remove(log_path)
         display_message("Log file deleted.", "green")
@@ -181,7 +180,7 @@ message_label.grid(row=8, column=0, columnspan=4, pady=10)
 author_label = tk.Label(app, text="Author: NGVLinh5420", font=("Helvetica", 8), fg="black")
 author_label.grid(row=9, column=0, columnspan=2, pady=5, sticky="w")
 
-version_label = tk.Label(app, text="Version: 1.5", font=("Helvetica", 8), fg="black")
+version_label = tk.Label(app, text="Version: 1.6", font=("Helvetica", 8), fg="black")
 version_label.grid(row=9, column=2, columnspan=2, pady=5, sticky="e")
 
 # Chạy ứng dụng
