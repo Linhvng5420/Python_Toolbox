@@ -151,7 +151,7 @@ Button(button_frame, text="Paste", command=paste_file, bg="#FFC107", fg="black",
        font=("Arial", 12), padx=10, pady=5).pack(side="left", padx=10)
 
 # Thêm một nút dán bên phải cho thư mục
-Button(frame, text="Drag & Drop Directory", command=select_directory, bg="#FF5722", fg="white",
+Button(frame, text="Drag & Drop or Select Directory", command=select_directory, bg="#FF5722", fg="white",
        font=("Arial", 12), padx=10, pady=5).pack(pady=10)
 
 Label(frame, text="Current file name:", font=("Arial", 12), bg="#f0f0f0").pack()
