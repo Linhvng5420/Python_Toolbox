@@ -3,20 +3,32 @@ from tkinter import messagebox
 from tkinterdnd2 import DND_FILES, TkinterDnD
 from PIL import Image
 from pathlib import Path
+import subprocess
+import platform
+import os
 
 class DragDropApp(TkinterDnD.Tk):
     def __init__(self):
         super().__init__()
         self.title("Ghép ảnh ngang (PNG chất lượng cao)")
-        self.geometry("500x300")
+        self.geometry("500x350")
         self.configure(bg="#f0f0f0")
         self.image_paths = []
+        self.output_path = None
 
-        self.label = tk.Label(self, text="Kéo và thả tối đa 3 ảnh vào đây", font=("Arial", 14), bg="#f0f0f0")
-        self.label.pack(pady=40)
+        self.label = tk.Label(self, text="🖼️ Kéo và thả tối đa 3 ảnh vào đây", font=("Arial", 14), bg="#f0f0f0")
+        self.label.pack(pady=30)
 
-        self.status_label = tk.Label(self, text="", fg="green", bg="#f0f0f0", font=("Arial", 12))
+        self.status_label = tk.Label(self, text="", fg="green", bg="#f0f0f0", font=("Arial", 11))
         self.status_label.pack(pady=10)
+
+        # Nút mở thư mục
+        self.open_folder_button = tk.Button(self, text="📁 Mở thư mục chứa ảnh", command=self.open_folder, state=tk.DISABLED)
+        self.open_folder_button.pack(pady=5)
+
+        # Nút mở ảnh
+        self.open_image_button = tk.Button(self, text="🖼️ Mở ảnh vừa xuất", command=self.open_image, state=tk.DISABLED)
+        self.open_image_button.pack(pady=5)
 
         self.drop_target_register(DND_FILES)
         self.dnd_bind("<<Drop>>", self.on_drop)
@@ -33,7 +45,10 @@ class DragDropApp(TkinterDnD.Tk):
 
         try:
             output = self.merge_images_horizontally(filtered)
-            self.status_label.config(text=f"✅ Đã lưu tại: {output}")
+            self.output_path = output
+            self.status_label.config(text=f"✅ Đã lưu tại:\n{output}")
+            self.open_folder_button.config(state=tk.NORMAL)
+            self.open_image_button.config(state=tk.NORMAL)
         except Exception as e:
             messagebox.showerror("Lỗi xử lý ảnh", str(e))
 
@@ -56,6 +71,25 @@ class DragDropApp(TkinterDnD.Tk):
         output_path = pictures_dir / "merged_output.png"
         result.save(output_path, format="PNG")
         return output_path
+
+    def open_folder(self):
+        if self.output_path:
+            folder = os.path.dirname(str(self.output_path))
+            if platform.system() == "Windows":
+                os.startfile(folder)
+            elif platform.system() == "Darwin":
+                subprocess.run(["open", folder])
+            else:
+                subprocess.run(["xdg-open", folder])
+
+    def open_image(self):
+        if self.output_path:
+            if platform.system() == "Windows":
+                os.startfile(str(self.output_path))
+            elif platform.system() == "Darwin":
+                subprocess.run(["open", str(self.output_path)])
+            else:
+                subprocess.run(["xdg-open", str(self.output_path)])
 
 if __name__ == "__main__":
     app = DragDropApp()
