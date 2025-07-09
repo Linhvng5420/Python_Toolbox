@@ -110,11 +110,11 @@ def show_video_info():
     except:
         output_exists = False
     
-    btn_compare = tk.Button(control_frame, text="⚖️ So sánh trước/sau", 
+    btn_compare = tk.Button(control_frame, text="⚖️ So sánh kết quả", 
                            command=lambda: show_comparison_in_window(info_window), 
                            bg="#9b59b6", fg="white", font=("Arial", 9),
                            state="normal" if output_exists else "disabled")
-    btn_compare.pack(side="right", padx=5)
+    btn_compare.pack(side="left", padx=5)
     
     # Main frame with notebook for tabs
     main_frame = tk.Frame(info_window, bg="#f0f0f0")
@@ -403,12 +403,40 @@ def process_video():
 
     def run_ffmpeg():
         try:
-            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1)
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
+                                     universal_newlines=True, bufsize=1)
 
-            for line in process.stdout:
-                text_output.insert(tk.END, line)
-                text_output.see(tk.END)
+            last_progress_line = None
+            for line in iter(process.stdout.readline, ''):
+                line = line.rstrip('\n\r')
+                if not line:
+                    continue
+                
+                # Check if user is at the bottom before auto-scrolling
+                at_bottom = text_output.yview()[1] == 1.0
+                    
+                # Check if this is a progress line (contains frame=, fps=, time=)
+                if 'frame=' in line and 'fps=' in line and 'time=' in line:
+                    # This is a progress update line
+                    if last_progress_line is not None:
+                        # Delete the previous progress line
+                        try:
+                            text_output.delete("end-2l linestart", "end-1l linestart")
+                        except:
+                            pass
+                    
+                    text_output.insert(tk.END, line + "\n")
+                    last_progress_line = line
+                else:
+                    # This is a regular output line
+                    text_output.insert(tk.END, line + "\n")
+                    last_progress_line = None
+                
+                # Only auto-scroll if user was at bottom
+                if at_bottom:
+                    text_output.see(tk.END)
                 root.update_idletasks()
+                
             process.wait()
 
             progress_bar.stop()
@@ -418,6 +446,7 @@ def process_video():
                 text_output.insert(tk.END, "\n" + "=" * 80 + "\n")
                 text_output.insert(tk.END, "✅ Thành công! Video đã được tạo.\n")
                 text_output.insert(tk.END, f"📍 Vị trí: {output_path}\n")
+                text_output.see(tk.END)  # Always scroll to end for completion message
                 
                 # Enable comparison button in info window if it exists
                 if hasattr(root, 'info_window') and root.info_window.winfo_exists():
@@ -426,12 +455,14 @@ def process_video():
                 messagebox.showinfo("Thành công", "Video đã được xử lý thành công!")
             else:
                 text_output.insert(tk.END, "\n❌ Đã xảy ra lỗi trong quá trình xử lý!")
+                text_output.see(tk.END)  # Always scroll to end for error message
                 messagebox.showerror("Lỗi", "Có lỗi xảy ra trong quá trình xử lý!")
 
         except Exception as e:
             progress_bar.stop()
             btn_process.config(state="normal", text="🚀 Tăng tốc và xuất video")
             text_output.insert(tk.END, f"\n💥 Lỗi: {str(e)}")
+            text_output.see(tk.END)  # Always scroll to end for error message
             messagebox.showerror("Lỗi", f"Đã xảy ra lỗi: {str(e)}")
 
     threading.Thread(target=run_ffmpeg, daemon=True).start()
@@ -459,7 +490,7 @@ def on_enter_key(event):
 # Giao diện chính
 root = tkdnd.TkinterDnD.Tk()
 root.title("🎬 FFmpeg Video Speed Controller")
-root.geometry("1000x600")
+root.geometry("1200x800")
 root.configure(bg="#f0f0f0")
 
 # Enable drag and drop
