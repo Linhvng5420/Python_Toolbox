@@ -84,7 +84,7 @@ def show_video_info():
     # Tạo cửa sổ thông tin video
     info_window = tk.Toplevel(root)
     info_window.title("📊 Thông tin chất lượng video")
-    info_window.geometry("800x800")
+    info_window.geometry("1200x800")
     info_window.configure(bg="#f0f0f0")
     
     # Header
@@ -379,7 +379,7 @@ def process_video():
         "-preset", "fast"
     ]
 
-    if bitrate.strip() != "":
+    if bitrate.strip() != "" and bitrate.strip().lower() != "auto":
         cmd += ["-b:v", bitrate]
 
     cmd.append(output_path)
@@ -392,7 +392,14 @@ def process_video():
     text_output.insert(tk.END, f"📁 Input: {input_path}\n")
     text_output.insert(tk.END, f"⚡ Speed: {speed}x\n")
     text_output.insert(tk.END, f"💾 Output: {output_path}\n")
-    text_output.insert(tk.END, "-" * 60 + "\n")
+    text_output.insert(tk.END, "-" * 80 + "\n")
+    text_output.insert(tk.END, "💻 Câu lệnh FFmpeg đầy đủ:\n")
+    
+    # Display complete command
+    cmd_string = " ".join([f'"{arg}"' if " " in arg else arg for arg in cmd])
+    text_output.insert(tk.END, f"{cmd_string}\n")
+    text_output.insert(tk.END, "-" * 80 + "\n")
+    text_output.insert(tk.END, "📊 Tiến trình xử lý:\n")
 
     def run_ffmpeg():
         try:
@@ -408,7 +415,7 @@ def process_video():
             btn_process.config(state="normal", text="🚀 Tăng tốc và xuất video")
             
             if process.returncode == 0:
-                text_output.insert(tk.END, "\n" + "=" * 60 + "\n")
+                text_output.insert(tk.END, "\n" + "=" * 80 + "\n")
                 text_output.insert(tk.END, "✅ Thành công! Video đã được tạo.\n")
                 text_output.insert(tk.END, f"📍 Vị trí: {output_path}\n")
                 
@@ -434,7 +441,15 @@ def clear_log():
     text_output.delete(1.0, tk.END)
     entry_path.delete(0, tk.END)
     text_output.insert(tk.END, "🗑️ Đã xóa log và đường dẫn file.\n")
-    text_output.insert(tk.END, "📝 Sẵn sàng cho video mới!\n")
+    # Initial message
+    text_output.insert(tk.END, "🎬 Chào mừng đến với Video Speed Controller!\n")
+    text_output.insert(tk.END, "📝 Hướng dẫn:\n")
+    text_output.insert(tk.END, "1. 🖱️ Kéo thả file video vào cửa sổ này\n")
+    text_output.insert(tk.END, "2. 📂 Hoặc chọn file bằng nút 'Chọn file'\n")
+    text_output.insert(tk.END, "3. 📋 Hoặc dán đường dẫn từ clipboard (Ctrl+V)\n")
+    text_output.insert(tk.END, "4. ⚙️ Điều chỉnh tốc độ (2.0 = tăng tốc 2 lần)\n")
+    text_output.insert(tk.END, "5. 🎚️ Tùy chọn: Điều chỉnh bitrate (để trống = tự động)\n")
+    text_output.insert(tk.END, "6. 🚀 Nhấn 'Tăng tốc và xuất video' hoặc Enter\n")
     text_output.insert(tk.END, "-" * 60 + "\n\n")
 
 def on_enter_key(event):
@@ -496,9 +511,25 @@ entry_speed = tk.Entry(settings_frame, width=15, font=("Arial", 9))
 entry_speed.insert(0, "2.0")
 entry_speed.grid(row=0, column=1, sticky="w", padx=(5, 20), pady=5)
 
-tk.Label(settings_frame, text="Bitrate (vd: 2M):", bg="#f0f0f0", font=("Arial", 9)).grid(row=0, column=2, sticky="w", pady=5)
+tk.Label(settings_frame, text="Bitrate:", bg="#f0f0f0", font=("Arial", 9)).grid(row=0, column=2, sticky="w", pady=5)
 entry_bitrate = tk.Entry(settings_frame, width=15, font=("Arial", 9))
 entry_bitrate.grid(row=0, column=3, sticky="w", padx=(5, 0), pady=5)
+entry_bitrate.insert(0, "")
+entry_bitrate.config(fg="grey")
+entry_bitrate.insert(0, "Auto")
+
+def on_bitrate_focus_in(event):
+    if entry_bitrate.get() == "Auto":
+        entry_bitrate.delete(0, tk.END)
+        entry_bitrate.config(fg="black")
+
+def on_bitrate_focus_out(event):
+    if entry_bitrate.get().strip() == "":
+        entry_bitrate.insert(0, "Auto")
+        entry_bitrate.config(fg="grey")
+
+entry_bitrate.bind("<FocusIn>", on_bitrate_focus_in)
+entry_bitrate.bind("<FocusOut>", on_bitrate_focus_out)
 
 # Control buttons frame
 control_frame = tk.Frame(main_frame, bg="#f0f0f0")
@@ -508,7 +539,7 @@ btn_process = tk.Button(control_frame, text="🚀 Tăng tốc và xuất video",
                        bg="#27ae60", fg="white", font=("Arial", 11, "bold"), height=2)
 btn_process.pack(side="left", padx=(0, 10))
 
-btn_clear = tk.Button(control_frame, text="🗑️ Xóa log & đường dẫn", command=clear_log, 
+btn_clear = tk.Button(control_frame, text="🗑️ Clear All", command=clear_log, 
                      bg="#e74c3c", fg="white", font=("Arial", 9))
 btn_clear.pack(side="left", padx=(0, 10))
 
@@ -542,9 +573,6 @@ text_output.insert(tk.END, "3. 📋 Hoặc dán đường dẫn từ clipboard (
 text_output.insert(tk.END, "4. ⚙️ Điều chỉnh tốc độ (2.0 = tăng tốc 2 lần)\n")
 text_output.insert(tk.END, "5. 🎚️ Tùy chọn: Điều chỉnh bitrate (để trống = tự động)\n")
 text_output.insert(tk.END, "6. 🚀 Nhấn 'Tăng tốc và xuất video' hoặc Enter\n")
-text_output.insert(tk.END, "-" * 60 + "\n\n")
-
-root.mainloop()
 text_output.insert(tk.END, "-" * 60 + "\n\n")
 
 root.mainloop()
