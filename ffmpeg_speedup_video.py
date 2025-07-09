@@ -309,9 +309,13 @@ def on_drop(event):
     if files:
         file_path = files[0]
         if is_video_file(file_path):
+            # Auto clear when new video is dropped
+            text_output.delete(1.0, tk.END)
             entry_path.delete(0, tk.END)
             entry_path.insert(0, file_path)
             text_output.insert(tk.END, f"📁 Đã kéo thả file: {os.path.basename(file_path)}\n")
+            text_output.insert(tk.END, "✨ Đã tự động xóa log cũ cho video mới.\n")
+            text_output.insert(tk.END, "-" * 60 + "\n\n")
         else:
             messagebox.showerror("Lỗi", "File không phải là định dạng video được hỗ trợ!")
 
@@ -322,15 +326,21 @@ def paste_from_clipboard():
         if clipboard_text:
             file_path = extract_file_path_from_text(clipboard_text)
             if file_path:
+                # Auto clear when new video is pasted
+                text_output.delete(1.0, tk.END)
                 entry_path.delete(0, tk.END)
                 entry_path.insert(0, file_path)
                 text_output.insert(tk.END, f"📋 Đã dán từ clipboard: {os.path.basename(file_path)}\n")
+                text_output.insert(tk.END, "-" * 60 + "\n\n")
             else:
                 # Thử dán trực tiếp nếu không tìm thấy đường dẫn hợp lệ
                 if os.path.isfile(clipboard_text.strip()) and is_video_file(clipboard_text.strip()):
+                    # Auto clear when new video is pasted
+                    text_output.delete(1.0, tk.END)
                     entry_path.delete(0, tk.END)
                     entry_path.insert(0, clipboard_text.strip())
                     text_output.insert(tk.END, f"📋 Đã dán từ clipboard: {os.path.basename(clipboard_text.strip())}\n")
+                    text_output.insert(tk.END, "-" * 60 + "\n\n")
                 else:
                     messagebox.showwarning("Cảnh báo", "Clipboard không chứa đường dẫn video hợp lệ!")
     except Exception as e:
@@ -345,8 +355,13 @@ def on_entry_key(event):
 def select_file():
     filepath = filedialog.askopenfilename(filetypes=[("Video files", "*.mp4 *.avi *.mov *.mkv *.wmv *.flv *.webm *.m4v *.3gp")])
     if filepath:
+        
+        # Auto clear when new video is selected
+        text_output.delete(1.0, tk.END)
         entry_path.delete(0, tk.END)
         entry_path.insert(0, filepath)
+        text_output.insert(tk.END, f"📂 Đã chọn file: {os.path.basename(filepath)}\n")
+        text_output.insert(tk.END, "-" * 60 + "\n\n")
 
 def process_video():
     input_path = entry_path.get()
