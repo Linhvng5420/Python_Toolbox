@@ -81,7 +81,7 @@ def show_video_info():
     # Tạo cửa sổ thông tin video
     info_window = tk.Toplevel(root)
     info_window.title("📊 Thông tin chất lượng video")
-    info_window.geometry("800x600")
+    info_window.geometry("800x650")
     info_window.configure(bg="#f0f0f0")
     
     # Header
@@ -92,6 +92,26 @@ def show_video_info():
     title_label = tk.Label(header_frame, text="📊 Thông tin chất lượng video", 
                           font=("Arial", 14, "bold"), fg="white", bg="#34495e")
     title_label.pack(pady=10)
+    
+    # Control frame for buttons
+    control_frame = tk.Frame(info_window, bg="#f0f0f0")
+    control_frame.pack(fill="x", padx=10, pady=5)
+    
+    # Check if output file exists to enable comparison
+    speed = entry_speed.get()
+    try:
+        speed_val = float(speed)
+        base, ext = os.path.splitext(input_path)
+        output_path = f"{base}_{int(speed_val)}x{ext}"
+        output_exists = os.path.isfile(output_path)
+    except:
+        output_exists = False
+    
+    btn_compare = tk.Button(control_frame, text="⚖️ So sánh trước/sau", 
+                           command=lambda: show_comparison_in_window(info_window), 
+                           bg="#9b59b6", fg="white", font=("Arial", 9),
+                           state="normal" if output_exists else "disabled")
+    btn_compare.pack(side="right", padx=5)
     
     # Main frame with notebook for tabs
     main_frame = tk.Frame(info_window, bg="#f0f0f0")
@@ -114,9 +134,45 @@ def show_video_info():
     # Lưu reference để sử dụng sau
     info_window.compare_frame = compare_frame
     info_window.notebook = notebook
+    info_window.btn_compare = btn_compare
     
     # Lưu window reference
     root.info_window = info_window
+
+def show_comparison_in_window(info_window):
+    """Hiển thị so sánh trong cửa sổ thông tin video"""
+    input_path = entry_path.get()
+    speed = float(entry_speed.get())
+    base, ext = os.path.splitext(input_path)
+    output_path = f"{base}_{int(speed)}x{ext}"
+    
+    if not os.path.isfile(output_path):
+        messagebox.showwarning("Cảnh báo", "File đầu ra chưa tồn tại. Vui lòng xử lý video trước!")
+        return
+    
+    # Clear comparison frame
+    for widget in info_window.compare_frame.winfo_children():
+        widget.destroy()
+    
+    # Create comparison layout
+    compare_main = tk.Frame(info_window.compare_frame, bg="#f0f0f0")
+    compare_main.pack(fill="both", expand=True)
+    
+    # Left side - Original
+    left_frame = tk.Frame(compare_main, bg="#f0f0f0")
+    left_frame.pack(side="left", fill="both", expand=True, padx=(0, 5))
+    
+    # Right side - Processed
+    right_frame = tk.Frame(compare_main, bg="#f0f0f0")
+    right_frame.pack(side="right", fill="both", expand=True, padx=(5, 0))
+    
+    # Create info tables
+    create_info_table(left_frame, input_path, "📹 Video gốc")
+    create_info_table(right_frame, output_path, f"⚡ Video sau xử lý ({speed}x)")
+    
+    # Enable comparison tab
+    info_window.notebook.tab(1, state="normal")
+    info_window.notebook.select(1)
 
 def create_info_table(parent_frame, file_path, title):
     """Tạo bảng hiển thị thông tin video"""
@@ -288,8 +344,9 @@ def process_video():
                 text_output.insert(tk.END, "✅ Thành công! Video đã được tạo.\n")
                 text_output.insert(tk.END, f"📍 Vị trí: {output_path}\n")
                 
-                # Enable comparison button
-                btn_compare.config(state="normal")
+                # Enable comparison button in info window if it exists
+                if hasattr(root, 'info_window') and root.info_window.winfo_exists():
+                    root.info_window.btn_compare.config(state="normal")
                 
                 messagebox.showinfo("Thành công", "Video đã được xử lý thành công!")
             else:
@@ -375,11 +432,7 @@ btn_clear.pack(side="left", padx=(0, 10))
 
 btn_info = tk.Button(control_frame, text="📊 Thông tin video", command=show_video_info, 
                     bg="#3498db", fg="white", font=("Arial", 9))
-btn_info.pack(side="left", padx=(0, 10))
-
-btn_compare = tk.Button(control_frame, text="⚖️ So sánh", command=show_comparison, 
-                       bg="#9b59b6", fg="white", font=("Arial", 9), state="disabled")
-btn_compare.pack(side="left")
+btn_info.pack(side="left")
 
 # Progress bar
 progress_bar = ttk.Progressbar(control_frame, mode='indeterminate')
