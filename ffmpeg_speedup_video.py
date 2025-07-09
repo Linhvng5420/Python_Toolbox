@@ -3,6 +3,218 @@ import subprocess
 import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext, ttk
+import json
+
+def get_video_info(file_path):
+    """Lấy thông tin video bằng ffprobe"""
+    try:
+        cmd = [
+            "ffprobe", "-v", "quiet", "-print_format", "json", 
+            "-show_format", "-show_streams", file_path
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode == 0:
+            data = json.loads(result.stdout)
+            
+            # Tìm video stream và audio stream
+            video_stream = None
+            audio_stream = None
+            
+            for stream in data.get('streams', []):
+                if stream.get('codec_type') == 'video' and not video_stream:
+                    video_stream = stream
+                elif stream.get('codec_type') == 'audio' and not audio_stream:
+                    audio_stream = stream
+            
+            format_info = data.get('format', {})
+            
+            info = {
+                'duration': float(format_info.get('duration', 0)),
+                'size': int(format_info.get('size', 0)),
+                'bitrate': int(format_info.get('bit_rate', 0)) if format_info.get('bit_rate') else 0,
+                'video_width': int(video_stream.get('width', 0)) if video_stream else 0,
+                'video_height': int(video_stream.get('height', 0)) if video_stream else 0,
+                'video_fps': eval(video_stream.get('r_frame_rate', '0/1')) if video_stream else 0,
+                'video_codec': video_stream.get('codec_name', 'N/A') if video_stream else 'N/A',
+                'audio_bitrate': int(audio_stream.get('bit_rate', 0)) if audio_stream and audio_stream.get('bit_rate') else 0,
+                'audio_sample_rate': int(audio_stream.get('sample_rate', 0)) if audio_stream else 0,
+                'audio_codec': audio_stream.get('codec_name', 'N/A') if audio_stream else 'N/A'
+            }
+            return info
+        else:
+            return None
+    except Exception as e:
+        print(f"Error getting video info: {e}")
+        return None
+
+def format_duration(seconds):
+    """Chuyển đổi giây thành định dạng HH:MM:SS"""
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+def format_size(bytes_size):
+    """Chuyển đổi bytes thành định dạng dễ đọc"""
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if bytes_size < 1024.0:
+            return f"{bytes_size:.1f} {unit}"
+        bytes_size /= 1024.0
+    return f"{bytes_size:.1f} TB"
+
+def format_bitrate(bitrate):
+    """Chuyển đổi bitrate thành định dạng dễ đọc"""
+    if bitrate >= 1000000:
+        return f"{bitrate/1000000:.1f} Mbps"
+    elif bitrate >= 1000:
+        return f"{bitrate/1000:.1f} Kbps"
+    else:
+        return f"{bitrate} bps"
+
+def show_video_info():
+    """Hiển thị thông tin video trong cửa sổ phụ"""
+    input_path = entry_path.get()
+    if not os.path.isfile(input_path):
+        messagebox.showerror("Lỗi", "Vui lòng chọn file video trước!")
+        return
+    
+    # Tạo cửa sổ thông tin video
+    info_window = tk.Toplevel(root)
+    info_window.title("📊 Thông tin chất lượng video")
+    info_window.geometry("800x600")
+    info_window.configure(bg="#f0f0f0")
+    
+    # Header
+    header_frame = tk.Frame(info_window, bg="#34495e", height=50)
+    header_frame.pack(fill="x", padx=5, pady=5)
+    header_frame.pack_propagate(False)
+    
+    title_label = tk.Label(header_frame, text="📊 Thông tin chất lượng video", 
+                          font=("Arial", 14, "bold"), fg="white", bg="#34495e")
+    title_label.pack(pady=10)
+    
+    # Main frame with notebook for tabs
+    main_frame = tk.Frame(info_window, bg="#f0f0f0")
+    main_frame.pack(fill="both", expand=True, padx=10, pady=5)
+    
+    notebook = ttk.Notebook(main_frame)
+    notebook.pack(fill="both", expand=True)
+    
+    # Tab 1: Video gốc
+    original_frame = tk.Frame(notebook, bg="#f0f0f0")
+    notebook.add(original_frame, text="📹 Video gốc")
+    
+    # Tab 2: So sánh (sẽ hiển thị sau khi xử lý)
+    compare_frame = tk.Frame(notebook, bg="#f0f0f0")
+    notebook.add(compare_frame, text="⚖️ So sánh", state="disabled")
+    
+    # Tạo bảng thông tin cho video gốc
+    create_info_table(original_frame, input_path, "📹 Thông tin video gốc")
+    
+    # Lưu reference để sử dụng sau
+    info_window.compare_frame = compare_frame
+    info_window.notebook = notebook
+    
+    # Lưu window reference
+    root.info_window = info_window
+
+def create_info_table(parent_frame, file_path, title):
+    """Tạo bảng hiển thị thông tin video"""
+    # Title
+    title_label = tk.Label(parent_frame, text=title, font=("Arial", 12, "bold"), 
+                          bg="#f0f0f0", fg="#2c3e50")
+    title_label.pack(pady=(10, 5))
+    
+    # File path
+    path_frame = tk.Frame(parent_frame, bg="#f0f0f0")
+    path_frame.pack(fill="x", padx=10, pady=5)
+    
+    tk.Label(path_frame, text="📁 File:", font=("Arial", 9, "bold"), bg="#f0f0f0").pack(anchor="w")
+    path_text = tk.Text(path_frame, height=2, wrap="word", font=("Arial", 8))
+    path_text.pack(fill="x", pady=(2, 10))
+    path_text.insert("1.0", file_path)
+    path_text.config(state="disabled")
+    
+    # Info table frame
+    table_frame = tk.Frame(parent_frame, bg="#f0f0f0")
+    table_frame.pack(fill="both", expand=True, padx=10, pady=5)
+    
+    # Get video info
+    info = get_video_info(file_path)
+    
+    if info:
+        # Create treeview for better table display
+        tree = ttk.Treeview(table_frame, columns=("property", "value"), show="headings", height=12)
+        tree.heading("property", text="Thuộc tính")
+        tree.heading("value", text="Giá trị")
+        tree.column("property", width=200)
+        tree.column("value", width=300)
+        
+        # Add data to tree
+        tree.insert("", "end", values=("⏱️ Thời lượng", format_duration(info['duration'])))
+        tree.insert("", "end", values=("📏 Kích thước file", format_size(info['size'])))
+        tree.insert("", "end", values=("🔗 Bitrate tổng", format_bitrate(info['bitrate'])))
+        tree.insert("", "end", values=("", ""))  # Separator
+        tree.insert("", "end", values=("📺 THÔNG TIN VIDEO", ""))
+        tree.insert("", "end", values=("📐 Độ phân giải", f"{info['video_width']} x {info['video_height']}"))
+        tree.insert("", "end", values=("🎬 Frame rate", f"{info['video_fps']:.2f} fps"))
+        tree.insert("", "end", values=("🎥 Video codec", info['video_codec']))
+        tree.insert("", "end", values=("", ""))  # Separator
+        tree.insert("", "end", values=("🔊 THÔNG TIN AUDIO", ""))
+        tree.insert("", "end", values=("🎵 Audio bitrate", format_bitrate(info['audio_bitrate'])))
+        tree.insert("", "end", values=("📻 Sample rate", f"{info['audio_sample_rate']} Hz"))
+        tree.insert("", "end", values=("🎼 Audio codec", info['audio_codec']))
+        
+        tree.pack(fill="both", expand=True)
+        
+        # Scrollbar for tree
+        scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        
+    else:
+        error_label = tk.Label(table_frame, text="❌ Không thể lấy thông tin video", 
+                              font=("Arial", 10), bg="#f0f0f0", fg="red")
+        error_label.pack(pady=20)
+
+def show_comparison():
+    """Hiển thị so sánh trước và sau khi xử lý"""
+    if not hasattr(root, 'info_window') or not root.info_window.winfo_exists():
+        show_video_info()
+        return
+    
+    input_path = entry_path.get()
+    speed = float(entry_speed.get())
+    base, ext = os.path.splitext(input_path)
+    output_path = f"{base}_{int(speed)}x{ext}"
+    
+    if not os.path.isfile(output_path):
+        messagebox.showwarning("Cảnh báo", "File đầu ra chưa tồn tại. Vui lòng xử lý video trước!")
+        return
+    
+    # Clear comparison frame
+    for widget in root.info_window.compare_frame.winfo_children():
+        widget.destroy()
+    
+    # Create comparison layout
+    compare_main = tk.Frame(root.info_window.compare_frame, bg="#f0f0f0")
+    compare_main.pack(fill="both", expand=True)
+    
+    # Left side - Original
+    left_frame = tk.Frame(compare_main, bg="#f0f0f0")
+    left_frame.pack(side="left", fill="both", expand=True, padx=(0, 5))
+    
+    # Right side - Processed
+    right_frame = tk.Frame(compare_main, bg="#f0f0f0")
+    right_frame.pack(side="right", fill="both", expand=True, padx=(5, 0))
+    
+    # Create info tables
+    create_info_table(left_frame, input_path, "📹 Video gốc")
+    create_info_table(right_frame, output_path, f"⚡ Video sau xử lý ({speed}x)")
+    
+    # Enable comparison tab
+    root.info_window.notebook.tab(1, state="normal")
+    root.info_window.notebook.select(1)
 
 def select_file():
     filepath = filedialog.askopenfilename(filetypes=[("Video files", "*.mp4 *.avi *.mov *.mkv")])
@@ -48,6 +260,7 @@ def process_video():
 
     # Disable button during processing
     btn_process.config(state="disabled", text="Đang xử lý...")
+    btn_info.config(state="disabled")
     progress_bar.start(10)
     text_output.delete(1.0, tk.END)
     text_output.insert(tk.END, "🚀 Bắt đầu xử lý video...\n")
@@ -68,11 +281,16 @@ def process_video():
 
             progress_bar.stop()
             btn_process.config(state="normal", text="🚀 Tăng tốc và xuất video")
+            btn_info.config(state="normal")
             
             if process.returncode == 0:
                 text_output.insert(tk.END, "\n" + "=" * 60 + "\n")
                 text_output.insert(tk.END, "✅ Thành công! Video đã được tạo.\n")
                 text_output.insert(tk.END, f"📍 Vị trí: {output_path}\n")
+                
+                # Enable comparison button
+                btn_compare.config(state="normal")
+                
                 messagebox.showinfo("Thành công", "Video đã được xử lý thành công!")
             else:
                 text_output.insert(tk.END, "\n❌ Đã xảy ra lỗi trong quá trình xử lý!")
@@ -81,6 +299,7 @@ def process_video():
         except Exception as e:
             progress_bar.stop()
             btn_process.config(state="normal", text="🚀 Tăng tốc và xuất video")
+            btn_info.config(state="normal")
             text_output.insert(tk.END, f"\n💥 Lỗi: {str(e)}")
             messagebox.showerror("Lỗi", f"Đã xảy ra lỗi: {str(e)}")
 
@@ -152,7 +371,15 @@ btn_process.pack(side="left", padx=(0, 10))
 
 btn_clear = tk.Button(control_frame, text="🗑️ Xóa log", command=clear_log, 
                      bg="#e74c3c", fg="white", font=("Arial", 9))
-btn_clear.pack(side="left")
+btn_clear.pack(side="left", padx=(0, 10))
+
+btn_info = tk.Button(control_frame, text="📊 Thông tin video", command=show_video_info, 
+                    bg="#3498db", fg="white", font=("Arial", 9))
+btn_info.pack(side="left", padx=(0, 10))
+
+btn_compare = tk.Button(control_frame, text="⚖️ So sánh", command=show_comparison, 
+                       bg="#9b59b6", fg="white", font=("Arial", 9), state="disabled")
+btn_compare.pack(side="left")
 
 # Progress bar
 progress_bar = ttk.Progressbar(control_frame, mode='indeterminate')
