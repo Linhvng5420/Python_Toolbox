@@ -81,7 +81,7 @@ def show_video_info():
     # Tạo cửa sổ thông tin video
     info_window = tk.Toplevel(root)
     info_window.title("📊 Thông tin chất lượng video")
-    info_window.geometry("800x650")
+    info_window.geometry("800x800")
     info_window.configure(bg="#f0f0f0")
     
     # Header
@@ -314,9 +314,8 @@ def process_video():
 
     cmd.append(output_path)
 
-    # Disable button during processing
+    # Disable only the process button during processing, keep info button enabled
     btn_process.config(state="disabled", text="Đang xử lý...")
-    btn_info.config(state="disabled")
     progress_bar.start(10)
     text_output.delete(1.0, tk.END)
     text_output.insert(tk.END, "🚀 Bắt đầu xử lý video...\n")
@@ -337,7 +336,6 @@ def process_video():
 
             progress_bar.stop()
             btn_process.config(state="normal", text="🚀 Tăng tốc và xuất video")
-            btn_info.config(state="normal")
             
             if process.returncode == 0:
                 text_output.insert(tk.END, "\n" + "=" * 60 + "\n")
@@ -356,7 +354,6 @@ def process_video():
         except Exception as e:
             progress_bar.stop()
             btn_process.config(state="normal", text="🚀 Tăng tốc và xuất video")
-            btn_info.config(state="normal")
             text_output.insert(tk.END, f"\n💥 Lỗi: {str(e)}")
             messagebox.showerror("Lỗi", f"Đã xảy ra lỗi: {str(e)}")
 
@@ -372,7 +369,7 @@ def on_enter_key(event):
 # Giao diện chính
 root = tk.Tk()
 root.title("🎬 FFmpeg Video Speed Controller")
-root.geometry("900x700")
+root.geometry("1000x600")
 root.configure(bg="#f0f0f0")
 
 # Style configuration
@@ -443,7 +440,7 @@ output_frame = tk.LabelFrame(main_frame, text="📋 Kết quả xử lý", font=
                             bg="#f0f0f0", fg="#2c3e50", padx=5, pady=5)
 output_frame.pack(fill="both", expand=True)
 
-text_output = scrolledtext.ScrolledText(output_frame, height=20, width=100, 
+text_output = scrolledtext.ScrolledText(output_frame, height=20, width=120, 
                                        font=("Consolas", 9), bg="#1e1e1e", fg="#ffffff",
                                        insertbackground="white")
 text_output.pack(fill="both", expand=True, padx=5, pady=5)
@@ -458,6 +455,9 @@ text_output.insert(tk.END, "1. Chọn file video bằng nút 'Chọn file'\n")
 text_output.insert(tk.END, "2. Điều chỉnh tốc độ (2.0 = tăng tốc 2 lần)\n")
 text_output.insert(tk.END, "3. Tùy chọn: Điều chỉnh bitrate (để trống = tự động)\n")
 text_output.insert(tk.END, "4. Nhấn 'Tăng tốc và xuất video' hoặc Enter\n")
+text_output.insert(tk.END, "-" * 60 + "\n\n")
+
+root.mainloop()
 text_output.insert(tk.END, "-" * 60 + "\n\n")
 
 root.mainloop()
