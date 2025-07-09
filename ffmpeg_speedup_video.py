@@ -4,6 +4,9 @@ import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 import json
+import tkinterdnd2 as tkdnd
+import pyperclip
+import re
 
 def get_video_info(file_path):
     """Lấy thông tin video bằng ffprobe"""
@@ -272,8 +275,75 @@ def show_comparison():
     root.info_window.notebook.tab(1, state="normal")
     root.info_window.notebook.select(1)
 
+def is_video_file(file_path):
+    """Kiểm tra xem file có phải là video không"""
+    video_extensions = ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm', '.m4v', '.3gp']
+    return any(file_path.lower().endswith(ext) for ext in video_extensions)
+
+def extract_file_path_from_text(text):
+    """Trích xuất đường dẫn file từ text clipboard"""
+    # Loại bỏ ký tự xuống dòng và khoảng trắng thừa
+    text = text.strip().replace('\n', '').replace('\r', '')
+    
+    # Kiểm tra nếu là đường dẫn Windows hoàn chỉnh
+    if os.path.isfile(text) and is_video_file(text):
+        return text
+    
+    # Tìm đường dẫn trong text bằng regex
+    patterns = [
+        r'[A-Za-z]:\\[^<>:"|?*\n\r]*\.[a-zA-Z0-9]{2,4}',  # Windows path
+        r'/[^<>:"|?*\n\r]*\.[a-zA-Z0-9]{2,4}',  # Unix path
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text)
+        for match in matches:
+            if os.path.isfile(match) and is_video_file(match):
+                return match
+    
+    return None
+
+def on_drop(event):
+    """Xử lý khi kéo thả file"""
+    files = root.tk.splitlist(event.data)
+    if files:
+        file_path = files[0]
+        if is_video_file(file_path):
+            entry_path.delete(0, tk.END)
+            entry_path.insert(0, file_path)
+            text_output.insert(tk.END, f"📁 Đã kéo thả file: {os.path.basename(file_path)}\n")
+        else:
+            messagebox.showerror("Lỗi", "File không phải là định dạng video được hỗ trợ!")
+
+def paste_from_clipboard():
+    """Dán đường dẫn từ clipboard"""
+    try:
+        clipboard_text = pyperclip.paste()
+        if clipboard_text:
+            file_path = extract_file_path_from_text(clipboard_text)
+            if file_path:
+                entry_path.delete(0, tk.END)
+                entry_path.insert(0, file_path)
+                text_output.insert(tk.END, f"📋 Đã dán từ clipboard: {os.path.basename(file_path)}\n")
+            else:
+                # Thử dán trực tiếp nếu không tìm thấy đường dẫn hợp lệ
+                if os.path.isfile(clipboard_text.strip()) and is_video_file(clipboard_text.strip()):
+                    entry_path.delete(0, tk.END)
+                    entry_path.insert(0, clipboard_text.strip())
+                    text_output.insert(tk.END, f"📋 Đã dán từ clipboard: {os.path.basename(clipboard_text.strip())}\n")
+                else:
+                    messagebox.showwarning("Cảnh báo", "Clipboard không chứa đường dẫn video hợp lệ!")
+    except Exception as e:
+        messagebox.showerror("Lỗi", f"Không thể truy cập clipboard: {str(e)}")
+
+def on_entry_key(event):
+    """Xử lý phím tắt trong ô nhập đường dẫn"""
+    if event.keysym == 'v' and event.state & 0x4:  # Ctrl+V
+        root.after_idle(paste_from_clipboard)
+        return "break"
+
 def select_file():
-    filepath = filedialog.askopenfilename(filetypes=[("Video files", "*.mp4 *.avi *.mov *.mkv")])
+    filepath = filedialog.askopenfilename(filetypes=[("Video files", "*.mp4 *.avi *.mov *.mkv *.wmv *.flv *.webm *.m4v *.3gp")])
     if filepath:
         entry_path.delete(0, tk.END)
         entry_path.insert(0, filepath)
@@ -360,17 +430,26 @@ def process_video():
     threading.Thread(target=run_ffmpeg, daemon=True).start()
 
 def clear_log():
+    """Clear All"""
     text_output.delete(1.0, tk.END)
+    entry_path.delete(0, tk.END)
+    text_output.insert(tk.END, "🗑️ Đã xóa log và đường dẫn file.\n")
+    text_output.insert(tk.END, "📝 Sẵn sàng cho video mới!\n")
+    text_output.insert(tk.END, "-" * 60 + "\n\n")
 
 def on_enter_key(event):
     if btn_process['state'] == 'normal':
         process_video()
 
 # Giao diện chính
-root = tk.Tk()
+root = tkdnd.TkinterDnD.Tk()
 root.title("🎬 FFmpeg Video Speed Controller")
 root.geometry("1000x600")
 root.configure(bg="#f0f0f0")
+
+# Enable drag and drop
+root.drop_target_register(tkdnd.DND_FILES)
+root.dnd_bind('<<Drop>>', on_drop)
 
 # Style configuration
 style = ttk.Style()
@@ -397,9 +476,15 @@ input_frame.pack(fill="x", pady=(0, 10))
 tk.Label(input_frame, text="Đường dẫn:", bg="#f0f0f0", font=("Arial", 9)).grid(row=0, column=0, sticky="w", pady=5)
 entry_path = tk.Entry(input_frame, width=70, font=("Arial", 9))
 entry_path.grid(row=0, column=1, padx=(5, 5), pady=5)
+entry_path.bind('<KeyPress>', on_entry_key)
+
 btn_browse = tk.Button(input_frame, text="📂 Chọn file", command=select_file, 
                       bg="#3498db", fg="white", font=("Arial", 9, "bold"))
-btn_browse.grid(row=0, column=2, padx=(5, 0), pady=5)
+btn_browse.grid(row=0, column=2, padx=(5, 5), pady=5)
+
+btn_paste = tk.Button(input_frame, text="📋 Dán", command=paste_from_clipboard, 
+                     bg="#f39c12", fg="white", font=("Arial", 9, "bold"))
+btn_paste.grid(row=0, column=3, padx=(5, 0), pady=5)
 
 # Settings section
 settings_frame = tk.LabelFrame(main_frame, text="⚙️ Cài đặt", font=("Arial", 10, "bold"), 
@@ -423,7 +508,7 @@ btn_process = tk.Button(control_frame, text="🚀 Tăng tốc và xuất video",
                        bg="#27ae60", fg="white", font=("Arial", 11, "bold"), height=2)
 btn_process.pack(side="left", padx=(0, 10))
 
-btn_clear = tk.Button(control_frame, text="🗑️ Xóa log", command=clear_log, 
+btn_clear = tk.Button(control_frame, text="🗑️ Xóa log & đường dẫn", command=clear_log, 
                      bg="#e74c3c", fg="white", font=("Arial", 9))
 btn_clear.pack(side="left", padx=(0, 10))
 
@@ -451,10 +536,12 @@ root.bind('<Return>', on_enter_key)
 # Initial message
 text_output.insert(tk.END, "🎬 Chào mừng đến với Video Speed Controller!\n")
 text_output.insert(tk.END, "📝 Hướng dẫn:\n")
-text_output.insert(tk.END, "1. Chọn file video bằng nút 'Chọn file'\n")
-text_output.insert(tk.END, "2. Điều chỉnh tốc độ (2.0 = tăng tốc 2 lần)\n")
-text_output.insert(tk.END, "3. Tùy chọn: Điều chỉnh bitrate (để trống = tự động)\n")
-text_output.insert(tk.END, "4. Nhấn 'Tăng tốc và xuất video' hoặc Enter\n")
+text_output.insert(tk.END, "1. 🖱️ Kéo thả file video vào cửa sổ này\n")
+text_output.insert(tk.END, "2. 📂 Hoặc chọn file bằng nút 'Chọn file'\n")
+text_output.insert(tk.END, "3. 📋 Hoặc dán đường dẫn từ clipboard (Ctrl+V)\n")
+text_output.insert(tk.END, "4. ⚙️ Điều chỉnh tốc độ (2.0 = tăng tốc 2 lần)\n")
+text_output.insert(tk.END, "5. 🎚️ Tùy chọn: Điều chỉnh bitrate (để trống = tự động)\n")
+text_output.insert(tk.END, "6. 🚀 Nhấn 'Tăng tốc và xuất video' hoặc Enter\n")
 text_output.insert(tk.END, "-" * 60 + "\n\n")
 
 root.mainloop()
